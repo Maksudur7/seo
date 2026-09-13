@@ -133,7 +133,11 @@ class BrowserSessionManager:
         """Multi-stage verification to detect logged-in state on Threads."""
         try:
             if context:
-                cookies = {c['name']: c['value'] for c in context.cookies()}
+                try:
+                    all_cookies = context.cookies(["https://www.threads.net", "https://threads.net"])
+                except Exception:
+                    all_cookies = context.cookies()
+                cookies = {c['name']: c['value'] for c in all_cookies}
                 if "sessionid" in cookies or "ds_user_id" in cookies:
                     return True
 
