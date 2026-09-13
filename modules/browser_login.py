@@ -605,12 +605,6 @@ class BrowserSessionManager:
         _clean_profile_locks(profile_dir)
 
         try:
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            except Exception:
-                pass
-
             with sync_playwright() as pw:
                 ctx = pw.chromium.launch_persistent_context(
                     user_data_dir=profile_dir,
