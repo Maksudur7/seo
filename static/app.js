@@ -229,34 +229,49 @@ document.addEventListener("DOMContentLoaded", () => {
         statPostedCount.innerText = posted;
 
         if (currentLeads.length === 0) {
-            leadsContainer.innerHTML = `<p class="text-muted">No Threads leads processed yet. Start automation or click "Fetch Live Threads Leads".</p>`;
+            leadsContainer.innerHTML = `<p class="text-muted" style="padding: 1.5rem;">No Threads posts processed yet. Start automation or click "Run Threads Scan".</p>`;
             return;
         }
 
-        leadsContainer.innerHTML = currentLeads.map((l, idx) => `
-            <div class="lead-item">
-                <div class="lead-header">
-                    <span class="lead-platform">🧵 ${l.platform || 'Threads'}</span>
-                    <span class="lead-time">${l.timestamp}</span>
-                </div>
-                <div class="lead-title">
-                    <strong>Post:</strong> <a href="${l.url}" target="_blank" style="color: #fff">${escapeHtml(l.title)}</a>
-                </div>
-                <p><strong>Intent:</strong> ${escapeHtml(l.intent || 'Needs tool')}</p>
-                <div class="lead-reply-box">
-                    <strong>AI Generated Reply (${l.status}):</strong><br><br>
-                    <code id="reply-text-${idx}" class="clickable-code" data-lead-idx="${idx}" style="display: block; background: #0f172a; padding: 10px; border-radius: 6px; cursor: pointer; border: 1px solid var(--border-color);" title="Click to copy exact reply">${escapeHtml(l.reply_text)}</code>
-                    <br>
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <button class="btn btn-secondary copy-lead-btn" data-lead-idx="${idx}" style="padding: 6px 14px; font-size: 13px;">📋 Copy AI Reply</button>
-                        <button class="btn btn-success copy-open-lead-btn" data-lead-idx="${idx}" style="padding: 6px 14px; font-size: 13px;">🚀 Copy & Open Threads Post</button>
-                        <a href="${l.url}" target="_blank" class="btn btn-primary" style="padding: 6px 14px; font-size: 13px; text-decoration: none; display: inline-block;">🔗 Open Threads Post</a>
-                    </div>
-                    <br>
-                    <strong>Target Tool:</strong> <a href="${l.matched_url}" target="_blank" style="color: var(--accent-blue)">${l.matched_url}</a>
-                </div>
-            </div>
-        `).join("");
+        const tableRows = currentLeads.map((l, idx) => {
+            const url = l.url || '#';
+            const postId = l.id || (url.includes('/post/') ? url.split('/post/')[1].split('/')[0] : `threads_${idx+1}`);
+            const titleSnippet = escapeHtml(l.title || 'Threads Post');
+            const statusBadge = (l.status === 'posted_automatically' || l.status === 'posted_automatically_via_browser')
+                ? '<span style="color:#4ade80;font-weight:600">✅ Auto-Commented Live</span>'
+                : '<span style="color:#60a5fa">💬 Captured</span>';
+
+            return `
+                <tr>
+                    <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);">${idx + 1}</td>
+                    <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); font-family: monospace; color: #a78bfa;">${escapeHtml(postId)}</td>
+                    <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${titleSnippet}">${titleSnippet}</td>
+                    <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);">${statusBadge}</td>
+                    <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); opacity: 0.75; font-size: 0.85rem;">${l.timestamp || ''}</td>
+                    <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: right;">
+                        <a href="${url}" target="_blank" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px; text-decoration: none;">🔗 Open Link</a>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+
+        leadsContainer.innerHTML = `
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                <thead>
+                    <tr style="background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7);">
+                        <th style="padding: 10px 14px;">#</th>
+                        <th style="padding: 10px 14px;">Post ID</th>
+                        <th style="padding: 10px 14px;">Post Summary</th>
+                        <th style="padding: 10px 14px;">Status</th>
+                        <th style="padding: 10px 14px;">Time</th>
+                        <th style="padding: 10px 14px; text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+        `;
     }
 
     // Delegated Click Handlers for Feed Copy Buttons & Clickable Code
