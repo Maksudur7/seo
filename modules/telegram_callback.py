@@ -121,121 +121,22 @@ def execute_post_for_lead(lead_id: str) -> tuple:
                 return False, "Reddit rate limited - try after some time"
             return False, f"Reddit error: {err[:60]}"
 
-    # ── Threads ──────────────────────────────────────────────
-    elif "Threads" in platform:
-        from modules.threads_listener import ThreadsListener
-        listener = ThreadsListener(config)
-        if not listener.is_configured():
-            return False, "Threads credentials not configured in Settings"
+    # ── Meta Threads ─────────────────────────────────────────
+    from modules.threads_listener import ThreadsListener
+    listener = ThreadsListener(config)
+    if listener.is_configured():
+        threads_post_id = lead_id.replace("threads_", "").replace("real_", "") if lead_id.startswith("threads_") else None
+        if threads_post_id:
+            success, msg = listener.post_reply(threads_post_id, reply_text)
+            if success:
+                return True, "✅ Reply posted on Threads API successfully!"
 
-        # Extract Threads post ID from URL or lead ID
-        threads_post_id = None
-        if lead_id.startswith("threads_"):
-            threads_post_id = lead_id.replace("threads_", "")
-
-        if not threads_post_id:
-            return False, "Could not find Threads post ID"
-
-        success, msg = listener.post_reply(threads_post_id, reply_text)
-        if success:
-            return True, "✅ Reply posted on Threads successfully!"
-        return False, f"Threads error: {msg}"
-
-    # ── Twitter/X ──────────────────────────────────────────
-    elif "Twitter" in platform or "X" in platform:
-        from modules.twitter_replier import TwitterAutoReplier
-        replier = TwitterAutoReplier(config)
-        if not replier.is_configured():
-            return False, "Twitter credentials not configured in Settings"
-
-        # Extract tweet ID from URL or lead ID
-        tweet_id = None
-        url_parts = lead_url.rstrip("/").split("/")
-        if "status" in url_parts:
-            try:
-                tweet_id = url_parts[url_parts.index("status") + 1]
-            except IndexError:
-                pass
-        if not tweet_id and lead_id.startswith("twitter_"):
-            tweet_id = lead_id.replace("twitter_", "")
-
-        if not tweet_id:
-            return False, "Could not find Tweet ID"
-
-        username = lead.get("url", "").split("twitter.com/")[1].split("/")[0] if "twitter.com/" in lead.get("url", "") else "user"
-        success, msg = replier.post_reply(tweet_id, username, reply_text)
-        if success:
-            return True, "✅ Reply posted on Twitter/X successfully!"
-        return False, f"Twitter error: {msg}"
-
-    # ── Stack Overflow ──────────────────────────────────────
-    elif "Stack Overflow" in platform:
-        from modules.stackoverflow_answerer import StackOverflowAnswerer
-        answerer = StackOverflowAnswerer(config)
-        if not answerer.can_answer():
-            return False, "Stack Overflow access token not configured in Settings"
-
-        question_id = None
-        url_parts = lead_url.rstrip("/").split("/")
-        if "questions" in url_parts:
-            try:
-                question_id = int(url_parts[url_parts.index("questions") + 1])
-            except (IndexError, ValueError):
-                pass
-        if not question_id and lead_id.startswith("stackoverflow_"):
-            try:
-                question_id = int(lead_id.replace("stackoverflow_", ""))
-            except ValueError:
-                pass
-
-        if not question_id:
-            return False, "Could not find Stack Overflow question ID"
-
-        answer_html = answerer.format_answer_as_html(reply_text, lead.get("matched_url", ""))
-        success, msg = answerer.post_answer(question_id, answer_html)
-        if success:
-            return True, "✅ Answer posted on Stack Overflow successfully!"
-        return False, f"Stack Overflow error: {msg}"
-
-    # ── Facebook ──────────────────────────────────────────────
-    elif "Facebook" in platform:
-        meta_cfg = config.get("meta", {}) or config.get("facebook", {})
-        page_token = meta_cfg.get("page_access_token", "").strip() or meta_cfg.get("access_token", "").strip()
-        page_id = meta_cfg.get("page_id", "").strip() or meta_cfg.get("facebook_page_id", "").strip()
-        
-        # If Page access token exists, attempt direct Meta Graph API comment
-        if page_token and page_id:
-            try:
-                post_id_val = lead_id.replace("fb_", "").replace("real_", "")
-                graph_url = f"https://graph.facebook.com/v18.0/{post_id_val}/comments"
-                res = requests.post(graph_url, data={"message": reply_text, "access_token": page_token}, timeout=10)
-                if res.status_code == 200:
-                    return True, "✅ Comment posted on Facebook via Meta Graph API!"
-            except Exception as e:
-                print(f"[Facebook API] Error: {e}")
-
-        time.sleep(0.5)
-        return True, "✅ Comment posted on Facebook successfully!"
-
-    # ── Instagram ─────────────────────────────────────────────
-    elif "Instagram" in platform:
-        meta_cfg = config.get("meta", {}) or config.get("instagram", {})
-        access_token = meta_cfg.get("access_token", "").strip()
-
-        if access_token:
-            try:
-                media_id = lead_id.replace("ig_", "").replace("real_", "")
-                comment_url = f"https://graph.facebook.com/v18.0/{media_id}/comments"
-                res = requests.post(comment_url, data={"message": reply_text, "access_token": access_token}, timeout=10)
-                if res.status_code == 200:
-                    return True, "✅ Comment posted on Instagram via Graph API!"
-            except Exception as e:
-                print(f"[Instagram API] Error: {e}")
-
-        time.sleep(0.5)
-        return True, "✅ Comment posted on Instagram successfully!"
-
-    return False, f"Platform '{platform}' auto-posting not supported"
+    # Fallback: Threads Browser Session Posting
+    from modules.browser_login import browser_mgr
+    ok, msg = browser_mgr.post_reply("threads", lead_url, reply_text)
+    if ok:
+        return True, "✅ Reply posted on Threads Browser successfully!"
+    return False, f"Threads posting status: {msg}"
 
 
 
