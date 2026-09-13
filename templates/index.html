@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta Threads Marketing Automation Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">🧵</div>
+                <h2>Threads Bot</h2>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active">📊 Dashboard</a>
+                <a href="#browser-login" class="nav-item">🔐 Browser Login</a>
+                <a href="#settings" class="nav-item">⚙️ System Setup</a>
+                <a href="#site-index" class="nav-item">🌐 Indexed Tools</a>
+                <a href="#leads" class="nav-item">💬 Threads Leads Feed</a>
+            </nav>
+
+            <div class="status-card">
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="dot"></span>
+                    <span id="statusText">System Standby</span>
+                </div>
+                <button id="toggleAutomationBtn" class="btn btn-primary btn-block">Start 24/7 Automation</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div>
+                    <h1>Meta Threads Marketing Automation</h1>
+                    <p class="subtitle">AI-powered Meta Threads listening, share-link extraction & dynamic auto-commenting</p>
+                </div>
+                <div class="header-actions">
+                    <button id="crawlBtn" class="btn btn-secondary">🌐 Crawl Website Now</button>
+                    <button id="fetchMetaLeadsBtn" class="btn btn-primary">🧵 Fetch Live Threads Leads</button>
+                    <button id="scanBtn" class="btn btn-success">⚡ Run Threads Scan</button>
+                </div>
+            </header>
+
+            <!-- Toast Banner Notification -->
+            <div id="toastBanner" class="toast-banner" style="display: none;"></div>
+
+            <!-- Dashboard Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Indexed Tools</span>
+                    <h3 id="statIndexedCount">0</h3>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Total Leads Found</span>
+                    <h3 id="statTotalLeads">0</h3>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Auto Comments Posted</span>
+                    <h3 id="statPostedCount">0</h3>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Target Platform</span>
+                    <h3>🧵 Meta Threads</h3>
+                </div>
+            </div>
+
+            <!-- Browser Login Manager Section (Threads Dedicated) -->
+            <section id="browser-login" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🔐 Browser Login Manager (Meta Threads)</h2>
+                        <p style="opacity:0.7;font-size:0.85rem;margin-top:0.3rem">একবার Threads-এ Login করুন — Session স্থায়ীভাবে সংরক্ষিত থাকবে। Chrome window খুলবে, লগইন করুন, বন্ধ করুন।</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="browser-login-grid" id="browserLoginGrid">
+
+                            <!-- Threads -->
+                            <div class="browser-platform-card" id="card-threads">
+                                <div class="bp-header">
+                                    <span class="bp-emoji">🧵</span>
+                                    <div>
+                                        <div class="bp-name">Meta Threads</div>
+                                        <div class="bp-status" id="status-threads">⏳ Checking...</div>
+                                    </div>
+                                </div>
+                                <div class="bp-actions">
+                                    <button class="btn btn-primary" onclick="openBrowserLogin('threads')">🔓 Login</button>
+                                    <button class="btn btn-secondary" onclick="checkBrowserSession('threads')">🔄 Re-check</button>
+                                    <button class="btn btn-danger" onclick="clearBrowserSession('threads')">🗑️</button>
+                                </div>
+                            </div>
+
+                        </div>
+                        <p style="font-size:0.8rem;opacity:0.55;margin-top:1rem;">💡 Login করার পরে browser বন্ধ করুন — session স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে এবং ব্যাকগ্রাউন্ডে Threads অটোমেশনের কাজ করবে।</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Settings Section -->
+            <section id="settings" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>⚙️ Configuration & Credentials</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="configForm">
+                            <div class="form-group">
+                                <label for="geminiApiKey">Gemini API Key</label>
+                                <input type="password" id="geminiApiKey" class="form-input" placeholder="AIzaSy...">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="targetWebsiteUrl">Target Marketing Website URL</label>
+                                <input type="url" id="targetWebsiteUrl" class="form-input" placeholder="https://yourfileconverter.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="keywords">Target Keywords (Comma Separated)</label>
+                                <input type="text" id="keywords" class="form-input" placeholder="convert pdf, pdf to word, file converter, compress pdf">
+                            </div>
+
+                            <!-- Telegram Alerts Section -->
+                            <div class="platform-box">
+                                <h4>✈️ Telegram Live Alerts Configuration</h4>
+                                <div class="form-row">
+                                    <input type="password" id="telegramBotToken" class="form-input" placeholder="Telegram Bot Token (e.g. 123456789:ABC...)">
+                                    <input type="text" id="telegramChatId" class="form-input" placeholder="Telegram Chat ID (e.g. 987654321)">
+                                </div>
+                            </div>
+
+                            <!-- Meta Threads API Setup -->
+                            <div class="platform-box">
+                                <h4>🧵 Meta Threads Official API (Optional)</h4>
+                                <div class="form-group" style="margin-bottom: 0.75rem;">
+                                    <label for="threadsAccessToken">Threads User Access Token (Free from developers.facebook.com)</label>
+                                    <input type="password" id="threadsAccessToken" class="form-input" placeholder="THQW... Access Token">
+                                </div>
+                                <div class="form-group">
+                                    <label for="threadsUserId">Threads User ID</label>
+                                    <input type="text" id="threadsUserId" class="form-input" placeholder="Threads User ID (Numeric)">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary mt-3">💾 Save Configuration</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Indexed Site Tools Section -->
+            <section id="site-index" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🌐 Indexed Website Converter Pages</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="pagesList" class="pages-grid">
+                            <p class="text-muted">No website tools indexed yet. Click "Crawl Website Now" to auto-scan your site routes.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Leads & Auto Comments Feed -->
+            <section id="leads" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>💬 Live Meta Threads Leads & Auto-Posted Comments</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="leadsContainer" class="leads-list">
+                            <p class="text-muted">No leads processed yet. Start automation or click "Run Threads Scan".</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/app.js?v=3"></script>
+</body>
+</html>
