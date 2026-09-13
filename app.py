@@ -184,29 +184,29 @@ async def get_browser_status():
 
 @app.post("/api/browser-login/{platform}")
 async def open_browser_login(platform: str):
-    result = browser_mgr.open_login_window("threads")
+    import asyncio
+    result = await asyncio.to_thread(browser_mgr.open_login_window, "threads")
     return JSONResponse(content=result)
 
 @app.post("/api/browser-check/{platform}")
 async def check_browser_session(platform: str):
     import asyncio
-    import concurrent.futures
-    loop = asyncio.get_event_loop()
-    with concurrent.futures.ThreadPoolExecutor() as pool:
-        logged_in = await loop.run_in_executor(pool, browser_mgr.check_login_status, "threads")
+    logged_in = await asyncio.to_thread(browser_mgr.check_login_status, "threads")
     return JSONResponse(content={"platform": "threads", "logged_in": logged_in})
 
 @app.post("/api/browser-cookie/{platform}")
 async def import_browser_cookie(platform: str, request: Request):
+    import asyncio
     data = await request.json()
     session_id = data.get("session_id", "").strip()
     ds_user_id = data.get("ds_user_id", "").strip()
-    result = browser_mgr.import_session_cookies(session_id, ds_user_id)
+    result = await asyncio.to_thread(browser_mgr.import_session_cookies, session_id, ds_user_id)
     return JSONResponse(content=result)
 
 @app.delete("/api/browser-session/{platform}")
 async def clear_browser_session(platform: str):
-    result = browser_mgr.clear_session("threads")
+    import asyncio
+    result = await asyncio.to_thread(browser_mgr.clear_session, "threads")
     return JSONResponse(content=result)
 
 if __name__ == "__main__":
