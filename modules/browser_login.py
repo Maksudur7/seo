@@ -76,7 +76,7 @@ def _get_browser_args():
 
 
 def _clean_profile_locks(profile_dir):
-    """Remove stale Chrome SingletonLock files before launching browser context."""
+    """Remove stale Chrome SingletonLock files and terminate orphaned Chrome processes for profile_dir."""
     try:
         p = Path(profile_dir)
         for lock_name in ["SingletonLock", "SingletonCookie", "SingletonSocket", "lockfile"]:
@@ -85,10 +85,36 @@ def _clean_profile_locks(profile_dir):
                 try:
                     lock_path.unlink()
                 except Exception:
-                    pass
+                    if os.name == 'nt':
+                        try:
+                            cmd = f'powershell -Command "Get-CimInstance Win32_Process -Filter \\"Name = \'chrome.exe\'\\" | Where-Object {{ $_.CommandLine -like \'*{p.name}*\' }} | Stop-Process -Force"'
+                            subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            time.sleep(0.5)
+                            if lock_path.exists():
+                                lock_path.unlink()
+                        except Exception:
+                            pass
     except Exception:
         pass
 
+
+def normalize_threads_url(url: str) -> str:
+    """Canonicalize Threads URL by stripping trailing slashes, /media, /likes, query params."""
+    if not url:
+        return ""
+    url = url.split("?")[0]
+    for suffix in ["/media", "/likes", "/reposts"]:
+        if url.endswith(suffix):
+            url = url[:-len(suffix)]
+    return url.rstrip("/")
+
+def extract_threads_post_id(url: str) -> str:
+    """Extract unique post ID from Threads URL e.g. /post/DVv_NNmAfmS -> DVv_NNmAfmS."""
+    if "/post/" in url:
+        parts = url.split("/post/")
+        if len(parts) > 1:
+            return parts[1].split("/")[0].split("?")[0]
+    return url
 
 # ─────────────────────────────────────────────────────────────
 # Human-like browser helpers
@@ -134,7 +160,7 @@ class BrowserSessionManager:
         try:
             if context:
                 try:
-                    all_cookies = context.cookies(["https://www.threads.net", "https://threads.net"])
+                    all_cookies = context.cookies(["https://www.threads.net", "https://threads.net", "https://www.threads.com", "https://threads.com"])
                 except Exception:
                     all_cookies = context.cookies()
                 cookies = {c['name']: c['value'] for c in all_cookies}
@@ -143,7 +169,7 @@ class BrowserSessionManager:
 
             if page:
                 url = page.url.lower()
-                if "login" not in url and "threads.net" in url:
+                if "login" not in url and ("threads.net" in url or "threads.com" in url):
                     for sel in ["svg[aria-label='Home']", "a[href='/']", "[aria-label='Profile']", "svg[aria-label='Create']"]:
                         if page.query_selector(sel):
                             return True
@@ -176,12 +202,6 @@ class BrowserSessionManager:
         """Background thread: opens visible browser, waits for user to log in."""
         cfg = PLATFORMS["threads"]
         profile_dir = str(PROFILES_DIR / "threads")
-
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        except Exception:
-            pass
 
         lock = self._locks.get("threads")
         if lock and not lock.acquire(blocking=True, timeout=10):
@@ -397,14 +417,15 @@ class BrowserSessionManager:
         leads = []
         try:
             # DOM evaluator using exact post link anchors (a[href*='/post/'])
-            extracted_items = page.evaluate("""() => {
+            extracted_items = page.evaluate(r"""() => {
                 const results = [];
                 const postAnchors = Array.from(document.querySelectorAll("a[href*='/post/']"));
                 const seenUrls = new Set();
                 for (const anchor of postAnchors) {
                     const href = anchor.getAttribute("href") || "";
                     if (!href) continue;
-                    const fullUrl = href.startsWith("http") ? href : "https://www.threads.net" + href;
+                    let cleanHref = href.split('?')[0].replace(/\/media\/?$/, '').replace(/\/likes\/?$/, '').replace(/\/reposts\/?$/, '').replace(/\/$/, '');
+                    const fullUrl = cleanHref.startsWith("http") ? cleanHref : "https://www.threads.net" + cleanHref;
                     if (seenUrls.has(fullUrl)) continue;
                     seenUrls.add(fullUrl);
 
@@ -711,7 +732,8 @@ class BrowserSessionManager:
         processed_leads = []
         ai = AIEngine()
         history = load_history()
-        existing_urls = {h.get("url") for h in history}
+        existing_urls = {normalize_threads_url(h.get("url")) for h in history if h.get("url")}
+        existing_post_ids = {extract_threads_post_id(h.get("url")) for h in history if h.get("url")}
 
         try:
             try:
@@ -749,11 +771,16 @@ class BrowserSessionManager:
 
                 # Step 2: Auto-reply on each new lead in SAME session
                 for post in raw_leads:
-                    url = post.get("url", "")
+                    raw_url = post.get("url", "")
                     title = post.get("title", "")
-                    if not url or url in existing_urls:
+                    clean_url = normalize_threads_url(raw_url)
+                    post_id = extract_threads_post_id(raw_url)
+
+                    if not raw_url or clean_url in existing_urls or post_id in existing_post_ids:
+                        print(f"⏩ [Duplicate Post Skipped] ID: {post_id} | Link: {clean_url}")
                         continue
-                    existing_urls.add(url)
+                    existing_urls.add(clean_url)
+                    existing_post_ids.add(post_id)
 
                     post_text = f"{title}\n{post.get('snippet', '')}"
                     ai_res = ai.analyze_and_draft_reply(post_text, platform="Threads")
