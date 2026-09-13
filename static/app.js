@@ -359,6 +359,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+    window.promptCookieImport = async function(platform = "threads") {
+        const sessionId = prompt("🔑 Paste your Threads 'sessionid' cookie:\n\n(Find in Chrome F12 -> Application -> Cookies -> threads.net -> sessionid):");
+        if (!sessionId) return;
+        const dsUserId = prompt("🆔 Optional: Enter your Threads 'ds_user_id' (or click OK to skip):") || "";
+        
+        try {
+            const res = await fetch("/api/browser-cookie/threads", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ session_id: sessionId, ds_user_id: dsUserId })
+            });
+            const data = await res.json();
+            showToast(data.message || "Cookie import finished", data.status === "error" ? "error" : "success");
+            window.checkBrowserSession("threads");
+        } catch (e) {
+            showToast("❌ Cookie import failed: " + e.message, "error");
+        }
+    };
+
     window.checkBrowserSession = async function(platform = "threads") {
         const el = document.getElementById("status-threads");
         if (el) { el.textContent = "🔄 Checking session…"; el.style.color = "#60a5fa"; }

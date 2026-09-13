@@ -592,6 +592,62 @@ class BrowserSessionManager:
         except Exception as e:
             return False, f"threads_browser_error_{str(e)[:40]}"
 
+    def import_session_cookies(self, session_id: str, ds_user_id: str = "") -> dict:
+        """Inject Threads sessionid and ds_user_id cookies directly into the persistent browser profile."""
+        if not HAS_PLAYWRIGHT:
+            return {"status": "error", "message": "playwright not installed"}
+
+        session_id = session_id.strip()
+        if not session_id:
+            return {"status": "error", "message": "sessionid cookie cannot be empty"}
+
+        profile_dir = str(PROFILES_DIR / "threads")
+        _clean_profile_locks(profile_dir)
+
+        try:
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            except Exception:
+                pass
+
+            with sync_playwright() as pw:
+                ctx = pw.chromium.launch_persistent_context(
+                    user_data_dir=profile_dir,
+                    headless=True,
+                    executable_path=_get_browser_args(),
+                    args=["--no-sandbox", "--disable-dev-shm-usage"],
+                )
+                cookies_to_set = [
+                    {
+                        "name": "sessionid",
+                        "value": session_id,
+                        "domain": ".threads.net",
+                        "path": "/",
+                        "secure": True,
+                        "httpOnly": True,
+                        "sameSite": "None",
+                    }
+                ]
+                if ds_user_id.strip():
+                    cookies_to_set.append({
+                        "name": "ds_user_id",
+                        "value": ds_user_id.strip(),
+                        "domain": ".threads.net",
+                        "path": "/",
+                        "secure": True,
+                        "httpOnly": False,
+                        "sameSite": "None",
+                    })
+                ctx.add_cookies(cookies_to_set)
+                ctx.close()
+
+            self._update_status("threads", True)
+            print("[BrowserLogin] ✅ Threads sessionid cookie injected successfully!")
+            return {"status": "success", "message": "🧵 Threads Session Cookie saved! Browser authenticated 24/7."}
+        except Exception as e:
+            return {"status": "error", "message": f"Cookie import failed: {e}"}
+
     def clear_session(self, platform: str = "threads") -> dict:
         """Delete saved browser profile for Threads."""
         import shutil

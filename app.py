@@ -196,6 +196,14 @@ async def check_browser_session(platform: str):
         logged_in = await loop.run_in_executor(pool, browser_mgr.check_login_status, "threads")
     return JSONResponse(content={"platform": "threads", "logged_in": logged_in})
 
+@app.post("/api/browser-cookie/{platform}")
+async def import_browser_cookie(platform: str, request: Request):
+    data = await request.json()
+    session_id = data.get("session_id", "").strip()
+    ds_user_id = data.get("ds_user_id", "").strip()
+    result = browser_mgr.import_session_cookies(session_id, ds_user_id)
+    return JSONResponse(content=result)
+
 @app.delete("/api/browser-session/{platform}")
 async def clear_browser_session(platform: str):
     result = browser_mgr.clear_session("threads")
