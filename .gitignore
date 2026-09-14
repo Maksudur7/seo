@@ -47,3 +47,9 @@ scratch/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Large Executables & Installers
+installer_dist/
+*.exe
+*.msi
+
