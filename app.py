@@ -1,5 +1,12 @@
+import utils.http_session
+import utils.transport
+import utils.session
 import sys, os
-sys.stdout.reconfigure(encoding='utf-8')
+if sys.stdout is not None and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse

@@ -184,6 +184,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     let currentLeads = [];
+    let currentPage = 1;
+    const itemsPerPage = 5;
 
     // Helper: Copy Text to Clipboard
     async function copyTextToClipboard(text, btnElement = null) {
@@ -225,7 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const res = await fetch("/api/history");
         currentLeads = await res.json();
         statTotalLeads.innerText = currentLeads.length;
-        const posted = currentLeads.filter(l => l.status === "posted_automatically").length;
+        const posted = currentLeads.filter(l => l.status === "posted_automatically" || l.status === "posted_automatically_via_browser").length;
         statPostedCount.innerText = posted;
 
         if (currentLeads.length === 0) {
@@ -233,9 +235,22 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const tableRows = currentLeads.map((l, idx) => {
+        renderLeadsPage();
+    }
+
+    function renderLeadsPage() {
+        const totalPages = Math.ceil(currentLeads.length / itemsPerPage) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        const endIdx = startIdx + itemsPerPage;
+        const pageLeads = currentLeads.slice(startIdx, endIdx);
+
+        const tableRows = pageLeads.map((l, pageOffset) => {
+            const globalIdx = startIdx + pageOffset;
             const url = l.url || '#';
-            const postId = l.id || (url.includes('/post/') ? url.split('/post/')[1].split('/')[0] : `threads_${idx+1}`);
+            const postId = l.id || (url.includes('/post/') ? url.split('/post/')[1].split('/')[0] : `threads_${globalIdx+1}`);
             const titleSnippet = escapeHtml(l.title || 'Threads Post');
             const statusBadge = (l.status === 'posted_automatically' || l.status === 'posted_automatically_via_browser')
                 ? '<span style="color:#4ade80;font-weight:600">✅ Auto-Commented Live</span>'
@@ -243,7 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             return `
                 <tr>
-                    <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);">${idx + 1}</td>
+                    <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);">${globalIdx + 1}</td>
                     <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); font-family: monospace; color: #a78bfa;">${escapeHtml(postId)}</td>
                     <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${titleSnippet}">${titleSnippet}</td>
                     <td style="padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);">${statusBadge}</td>
@@ -254,6 +269,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 </tr>
             `;
         }).join("");
+
+        // Build Pagination Buttons (Prev, 1, 2, 3, 4, Next)
+        let pageButtonsHtml = "";
+        for (let p = 1; p <= totalPages; p++) {
+            pageButtonsHtml += `
+                <button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToLeadPage(${p})">${p}</button>
+            `;
+        }
+
+        const paginationHtml = `
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    Showing <strong>${startIdx + 1}</strong> to <strong>${Math.min(endIdx, currentLeads.length)}</strong> of <strong>${currentLeads.length}</strong> leads
+                </div>
+                <div class="pagination-controls">
+                    <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="goToLeadPage(${currentPage - 1})">◀ Prev</button>
+                    ${pageButtonsHtml}
+                    <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="goToLeadPage(${currentPage + 1})">Next ▶</button>
+                </div>
+            </div>
+        `;
 
         leadsContainer.innerHTML = `
             <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
@@ -271,8 +307,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     ${tableRows}
                 </tbody>
             </table>
+            ${paginationHtml}
         `;
     }
+
+    window.goToLeadPage = function(page) {
+        currentPage = page;
+        renderLeadsPage();
+    };
 
     // Delegated Click Handlers for Feed Copy Buttons & Clickable Code
     document.addEventListener("click", (e) => {
