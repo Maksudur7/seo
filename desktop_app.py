@@ -7,6 +7,17 @@ import requests
 from pathlib import Path
 from PIL import Image, ImageDraw
 
+# Ensure stdout and stderr exist in PyInstaller windowed mode
+class NullWriter:
+    def write(self, text): pass
+    def flush(self): pass
+    def reconfigure(self, **kwargs): pass
+
+if sys.stdout is None:
+    sys.stdout = NullWriter()
+if sys.stderr is None:
+    sys.stderr = NullWriter()
+
 # Ensure PyInstaller executable root folder is in sys.path
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
