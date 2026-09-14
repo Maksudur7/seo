@@ -22,7 +22,6 @@ wheels/
 *.egg
 
 # Environments & Sensitive Configs
-.env
 .venv
 venv/
 ENV/
@@ -43,7 +42,14 @@ scratch/
 *.jpeg
 
 # IDE & OS
-.vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Large Executables & Installers
+installer_dist/
+*.exe
+*.msi
+
+config.bat
+node_modules
